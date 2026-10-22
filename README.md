@@ -19,7 +19,7 @@ Sistema de consulta de documentación interna construido en **n8n**. Permite que
 
 Centralizar el acceso a la documentación interna de la organización, reduciendo el tiempo de búsqueda manual en Google Drive. El proyecto resuelve tres necesidades:
 
-- **Consultar** la documentación desde Slack con el comando `/consulta_ia`.
+- **Consultar** en la base de conocimiento desde Slack con el comando `/consulta_ia`.
 - **Mantener actualizada** la base de conocimiento con el comando `/actualizar_conocimiento`, que detecta e indexa los archivos nuevos de Drive.
 - **Aislar el contexto por canal**: cada canal de Slack responde únicamente con los documentos y el prompt de sistema que tiene asignados.
 
