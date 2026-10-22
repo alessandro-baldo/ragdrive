@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comandos de RAG Drive</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 850px;
+      margin: 60px auto;
+      padding: 0 20px;
+      color: #24292f;
+      background: #f6f8fa;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #57606a;
+      margin-bottom: 28px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 16px;
+      text-align: left;
+      border-bottom: 1px solid #d8dee4;
+    }
+    th {
+      background: #eaeef2;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    code {
+      background: #ddf4ff;
+      padding: 4px 7px;
+      border-radius: 5px;
+      color: #0969da;
+    }
+  </style>
+</head>
+<body>
+  <h1>Comandos de RAG Drive</h1>
+  <p>Comandos disponibles para consultar y actualizar la base de conocimiento del canal.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Comando</th>
+        <th>Descripción</th>
+        <th>Ejemplo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/consulta_ia</code></td>
+        <td>Consulta la documentación disponible en el canal.</td>
+        <td><code>/consulta_ia ¿qué documentos tienes disponibles?</code></td>
+      </tr>
+      <tr>
+        <td><code>/actualizar_conocimiento</code></td>
+        <td>Detecta e indexa los archivos nuevos del canal.</td>
+        <td><code>/actualizar_conocimiento</code></td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>
