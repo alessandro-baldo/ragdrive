@@ -1,0 +1,445 @@
+{
+  "name": "RAG Drive | Consulta con IA (subflujo)",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Recibe solicitud').item.json.consulta }}",
+        "options": {
+          "systemMessage": "={{ $json.sys_prompt }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        -112
+      ],
+      "id": "9df34682-04c5-486c-8029-d3ce2c571e18",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        128
+      ],
+      "id": "21b36787-ab7a-4fa8-aeb7-81cb88a059f4",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "yrD0huak4GjFcXa0",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca fragmentos relevantes de la documentación interna indexada en Pinecone para responder consultas del agente de Slack. Debe recuperar únicamente documentos correspondientes al canal de Slack de la consulta.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "drive-documentos",
+          "mode": "list",
+          "cachedResultName": "drive-documentos"
+        },
+        "topK": 10,
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "=slack_channel_id",
+                "value": "={{ $('Obtener sys prompt del canal').item.json.slack_channel_id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        128
+      ],
+      "id": "9d691923-4ef6-4075-8264-d86600d5f4e1",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "j6bBGmeWPHop8ZxZ",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        336
+      ],
+      "id": "b816c48f-c360-4194-b811-6df6578f1cda",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "yrD0huak4GjFcXa0",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        -112
+      ],
+      "id": "a23551f5-dbbf-496d-abd6-e66c91619ba2",
+      "name": "Recibe solicitud"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "ragdrive_prompts_por_canal",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slack_channel_id",
+              "keyValue": "={{ $json.slack_channel_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -112
+      ],
+      "id": "1af02dba-43bf-4296-b3f0-af36368e8aac",
+      "name": "Obtener sys prompt del canal",
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "ragdrive_historial_consultas",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "solicitud_id",
+              "fieldValue": "={{ $('Recibe solicitud').item.json.solicitud_id }}"
+            },
+            {
+              "fieldId": "consulta",
+              "fieldValue": "={{ $('Recibe solicitud').item.json.consulta }}"
+            },
+            {
+              "fieldId": "respuesta",
+              "fieldValue": "={{ $json.output }}"
+            },
+            {
+              "fieldId": "estado",
+              "fieldValue": "completado"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -112
+      ],
+      "id": "3adf27db-d70e-4710-8036-b2b0d57fed1e",
+      "name": "Guardar consulta y respuesta",
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Recibe solicitud').item.json.slack_user_id }}",
+          "mode": "id"
+        },
+        "text": "={{ $json.respuesta }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        896,
+        -112
+      ],
+      "id": "661e8778-fb28-4d18-a2a1-68b9989867c3",
+      "name": "Enviar consulta por Slack",
+      "webhookId": "fc9af963-8a29-4a8b-9969-284f1bbdc9ac",
+      "credentials": {
+        "slackApi": {
+          "id": "TKPcqdX6ayXZZuIC",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "ragdrive_solicitudes",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "solicitud_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Recibe solicitud').item.json.solicitud_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado",
+              "fieldValue": "completado"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -112
+      ],
+      "id": "970870fb-7267-48c3-8bcc-0d51f07a37e6",
+      "name": "Marcar solicitud completada",
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "📥 RECEPCIÓN DE LA CONSULTA\n\n\nRecibe los datos de la solicitud desde el flujo principal de Slack.\n\nDatos esperados:\n- peticion_id: identificador de la solicitud.\n- consulta: pregunta del usuario.\n- slack_user_id: usuario al que se enviará la respuesta.\n- slack_channel_id: canal asociado a la consulta.\n\nEstos datos se utilizan durante todo el procesamiento para recuperar el contexto, guardar la respuesta y notificar al usuario.",
+        "height": 416,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        -400
+      ],
+      "id": "4b3e7ed4-b96e-4565-bc6c-bb68eb02916e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "⚙️ CONFIGURACIÓN DEL AGENTE POR CANAL\n\nConsulta en Supabase la tabla [DRIVE] consulta_sysprompt para obtener las instrucciones configuradas para el canal de Slack correspondiente.\n\nEl prompt recuperado define el comportamiento y el contexto de trabajo del agente para ese canal.",
+        "height": 464,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        -416
+      ],
+      "id": "f699d54b-b3bb-4a24-8aab-c7862d738b5c",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "🤖 CONSULTA INTELIGENTE CON RECUPERACIÓN DOCUMENTAL\n\nEl agente utiliza el modelo de OpenAI y las instrucciones específicas del canal para responder la consulta.\n\nCuando necesita información documental, puede consultar Pinecone, que recupera hasta 10 fragmentos relevantes de la base de conocimiento, filtrados por slack_channel_id.\n\nLos embeddings de OpenAI permiten realizar la búsqueda semántica de los fragmentos indexados.",
+        "height": 1056,
+        "width": 392,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -592
+      ],
+      "id": "e23d6aa6-9687-46fa-8863-f8ced499b9d6",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "🗃️ REGISTRO DE CONSULTA Y RESPUESTA\n\nGuarda en Supabase, en la tabla [DRIVE] consultas_ia, los datos de la consulta, la respuesta generada, el identificador de la solicitud y el estado completado.\n\nEsto permite conservar un historial de las consultas realizadas y sus respuestas.",
+        "height": 464,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -416
+      ],
+      "id": "d4b34446-8afb-46f2-af91-92b4a5a569e1",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "📩 ENTREGA DE RESPUESTA Y CIERRE\n\nEnvía la respuesta al usuario por mensaje directo de Slack.\n\nUna vez enviado el mensaje, actualiza la solicitud correspondiente en [DRIVE] peticiones, cambiando su estado a completado.",
+        "height": 464,
+        "width": 352,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -416
+      ],
+      "id": "38ee4932-489d-410e-8cf7-b7cf2e040c7c",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {
+    "Recibe solicitud": [
+      {
+        "json": {
+          "solicitud_id": "SLACK-24",
+          "consulta": "que documentos tienes disponible?",
+          "slack_user_id": "U0C90L0SMFX",
+          "slack_channel_id": "C0CAEACK12S"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Guardar consulta y respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibe solicitud": {
+      "main": [
+        [
+          {
+            "node": "Obtener sys prompt del canal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener sys prompt del canal": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar consulta y respuesta": {
+      "main": [
+        [
+          {
+            "node": "Enviar consulta por Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar consulta por Slack": {
+      "main": [
+        [
+          {
+            "node": "Marcar solicitud completada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e05178fd-1f8a-4ab9-95ae-2d4bc072595d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a02db2a2f3a5e728c3c72dc3e6158e75d02f1147091a88d152f46abb41015ac7"
+  },
+  "nodeGroups": [],
+  "id": "5I32WN8kwk31jX4C",
+  "tags": []
+}

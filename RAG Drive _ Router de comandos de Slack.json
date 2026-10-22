@@ -1,0 +1,582 @@
+{
+  "name": "RAG Drive | Router de comandos de Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "176f15e9-de2e-48de-a539-7381e4f4d74c",
+        "options": {
+          "noResponseBody": false,
+          "responseCode": {
+            "values": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        -432
+      ],
+      "id": "aacb4f03-11ad-4e22-a8bc-8a3e46635b97",
+      "name": "Webhook /consulta_ia",
+      "webhookId": "176f15e9-de2e-48de-a539-7381e4f4d74c"
+    },
+    {
+      "parameters": {
+        "tableId": "ragdrive_solicitudes",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "slack_channel_id",
+              "fieldValue": "={{ $json.body.channel_id }}"
+            },
+            {
+              "fieldId": "slack_channel_name",
+              "fieldValue": "={{ $json.body.channel_name }}"
+            },
+            {
+              "fieldId": "slack_user_id",
+              "fieldValue": "={{ $json.body.user_id }}"
+            },
+            {
+              "fieldId": "slack_user_name",
+              "fieldValue": "={{ $json.body.user_name }}"
+            },
+            {
+              "fieldId": "slack_command",
+              "fieldValue": "={{ $json.body.command }}"
+            },
+            {
+              "fieldId": "estado",
+              "fieldValue": "procesando"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -336
+      ],
+      "id": "ccfadf09-75df-4708-9d9b-bb6392ec44b2",
+      "name": "Registrar solicitud",
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "={{ $json.slack_user_id }}",
+          "mode": "id"
+        },
+        "messageType": "block",
+        "blocksUi": "={\n  \"text\": \"⏳ Solicitud {{ $json.solicitud_id }} recibida. Tu solicitud está siendo procesada.\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"⏳ *Solicitud en proceso*\\n\\nTu solicitud fue recibida correctamente y está siendo procesada. Te notificaremos cuando finalice.\"\n      }\n    },\n    {\n      \"type\": \"context\",\n      \"elements\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"Solicitud: `{{ $json.solicitud_id }}` · Operación: `{{ $json.slack_command }}`\"\n        }\n      ]\n    }\n  ]\n}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        384,
+        -336
+      ],
+      "id": "94fabfe0-97af-4b0b-9163-62590f9d9816",
+      "name": "Notificar solicitud recibida",
+      "webhookId": "4b807e48-c0dc-4755-82f4-a487474133ae",
+      "credentials": {
+        "slackApi": {
+          "id": "TKPcqdX6ayXZZuIC",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Registrar solicitud').item.json.slack_command }}",
+                    "rightValue": "/consulta_ia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8ff19c40-b4e3-42d5-afa5-6616a735025b"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "43f73bc0-0212-44d3-bb57-df5bfb0269fa",
+                    "leftValue": "={{ $('Registrar solicitud').item.json.slack_command }}",
+                    "rightValue": "/actualizar_conocimiento",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        -336
+      ],
+      "id": "dbdc704b-c4bb-4330-8e34-77bd9940d9bd",
+      "name": "Enrutar por comando"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c78464d5-46eb-40c8-8695-8ccdad03a39c",
+              "name": "solicitud_id",
+              "value": "={{ $('Registrar solicitud').item.json.solicitud_id }}",
+              "type": "string"
+            },
+            {
+              "id": "178eed65-4776-4736-bdea-d35313c0abe5",
+              "name": "consulta",
+              "value": "={{ $('Webhook /consulta_ia').item.json.body.text }}",
+              "type": "string"
+            },
+            {
+              "id": "2b643f59-5754-420b-b60d-6b573aa9192a",
+              "name": "slack_user_id",
+              "value": "={{ $('Registrar solicitud').item.json.slack_user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d8b2ed8e-e936-4830-b5cb-2337f2b6885f",
+              "name": "slack_channel_id",
+              "value": "={{ $('Registrar solicitud').item.json.slack_channel_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        832,
+        -432
+      ],
+      "id": "4dccf37d-1605-4ce3-ac50-d2e89e664a59",
+      "name": "Preparar datos para IA"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "5I32WN8kwk31jX4C",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/5I32WN8kwk31jX4C",
+          "cachedResultName": "RAG Drive | Consulta con IA (subflujo)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1056,
+        -432
+      ],
+      "id": "605cb336-35e7-4a07-b79d-d56bb6da12db",
+      "name": "Ejecutar subflujo consulta_ia"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "5chT8X7QF9i7Id9N",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/5chT8X7QF9i7Id9N",
+          "cachedResultName": "RAG Drive | Sincronización de archivos (subflujo)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1056,
+        -240
+      ],
+      "id": "5b49fb58-5872-4b97-a784-f1be282199e1",
+      "name": "Ejecutar subflujo archivos"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "d52f4ac4-5210-4a4d-8dde-a11ec97df28c",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -64,
+        -240
+      ],
+      "id": "ce5b7734-a9c2-4233-9769-128afc3ba370",
+      "name": "Webhook /actualizar_conocimiento",
+      "webhookId": "d52f4ac4-5210-4a4d-8dde-a11ec97df28c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c78464d5-46eb-40c8-8695-8ccdad03a39c",
+              "name": "solicitud_id",
+              "value": "={{ $('Registrar solicitud').item.json.solicitud_id }}",
+              "type": "string"
+            },
+            {
+              "id": "2b643f59-5754-420b-b60d-6b573aa9192a",
+              "name": "slack_user_id",
+              "value": "={{ $('Registrar solicitud').item.json.slack_user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d8b2ed8e-e936-4830-b5cb-2337f2b6885f",
+              "name": "slack_channel_id",
+              "value": "={{ $('Registrar solicitud').item.json.slack_channel_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        832,
+        -240
+      ],
+      "id": "f047d6e4-fb1d-40f3-adca-3f9251d8d93d",
+      "name": "Preparar datos para actualizar"
+    },
+    {
+      "parameters": {
+        "content": "**🌐 Recepción de comandos de Slack**\n\n\nRecibe las solicitudes enviadas desde los comandos de Slack mediante webhooks HTTP.\n\nComandos disponibles:\n- `/consulta_ia`: realiza consultas sobre la base de conocimiento del canal.\n- `/actualizar_conocimiento`: inicia el proceso de actualización de documentos.\n\nLos datos recibidos incluyen el canal, el usuario, el comando y el texto de la consulta cuando corresponde.",
+        "height": 672,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        -752
+      ],
+      "id": "3a7427be-ff9b-4fff-a2e7-01436ac7cab7",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**🗃️ Registro y confirmación de la solicitud**\n\nRegistra cada solicitud en `[DRIVE] peticiones` de Supabase, incluyendo los datos del usuario, el canal, el comando y el estado inicial `procesando`.\n\nLuego, envía al usuario un mensaje directo de Slack confirmando la recepción e informando el identificador de la solicitud.",
+        "height": 576,
+        "width": 400,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -752
+      ],
+      "id": "21763018-683c-45e1-a4dc-f696771bf804",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "**📂 Actualización de la base de conocimiento**\n\n\nInvoca el subflujo `[DRIVE] archivos` para gestionar la revisión y el procesamiento de los documentos asociados al canal.\n\nEste proceso permite detectar archivos y derivarlos a los flujos de registro e indexación para mantener actualizada la base de conocimiento utilizada por el asistente de IA.",
+        "height": 176,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        -480
+      ],
+      "id": "dccfbbc3-9ea9-401a-a71f-31d93a8b3eb5",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "**🤖 Consulta a la base de conocimiento**\n\n\nPrepara y transmite al subflujo `[DRIVE] consulta_ia` los datos necesarios para responder la consulta del usuario.\n\nSe envían el texto de la consulta, el identificador de la solicitud, el usuario y el canal de Slack para contextualizar el procesamiento y la respuesta.",
+        "height": 176,
+        "width": 704,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        -256
+      ],
+      "id": "9260aeb7-e707-4950-aa1c-bc4097aded64",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "**🔀 Enrutamiento por comando**\n\n\nEvalúa el comando recibido y deriva la ejecución al proceso correspondiente.\n\n- `/consulta_ia`: prepara el texto de la consulta y los identificadores necesarios para el asistente de IA.\n- `/actualizar_conocimiento`: prepara los datos del usuario, el canal y la solicitud para iniciar el proceso de gestión de archivos.",
+        "height": 704,
+        "width": 400,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        576,
+        -784
+      ],
+      "id": "44dbdb8a-4996-4d63-a9f3-54c047e8dcd3",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {
+    "Webhook /actualizar_conocimiento": [
+      {
+        "json": {
+          "headers": {
+            "host": "heztner-abaldosoldini.duckdns.org",
+            "user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+            "content-length": "444",
+            "accept": "application/json,*/*",
+            "accept-encoding": "gzip,deflate",
+            "content-type": "application/x-www-form-urlencoded",
+            "via": "1.1 Caddy",
+            "x-forwarded-for": "44.200.193.39",
+            "x-forwarded-host": "heztner-abaldosoldini.duckdns.org",
+            "x-forwarded-proto": "https",
+            "x-slack-request-timestamp": "1792684651",
+            "x-slack-signature": "v0=c2186133deacab877538885a01457d8acf8405a89e6cebaaea6d5ece92eedc1f"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "token": "aAhdp1HbkEJQLwWJyQ3pv1G4",
+            "team_id": "T0C99KKE2H2",
+            "team_domain": "abaldosoldini",
+            "channel_id": "C0CAEACK12S",
+            "channel_name": "logistica",
+            "user_id": "U0C90L0SMFX",
+            "user_name": "abaldosoldini",
+            "command": "/actualizar_conocimiento",
+            "text": "",
+            "api_app_id": "A0C95QHDA3C",
+            "is_enterprise_install": "false",
+            "response_url": "https://hooks.slack.com/commands/T0C99KKE2H2/12386433683010/xAi3laTw0H8T9huz1VZOBWLo",
+            "trigger_id": "12380389023251.12315665478580.6b897799e0c1dd6637262574494447f7"
+          },
+          "webhookUrl": "https://heztner-abaldosoldini.duckdns.org/webhook/d52f4ac4-5210-4a4d-8dde-a11ec97df28c",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook /consulta_ia": [
+      {
+        "json": {
+          "headers": {
+            "host": "heztner-abaldosoldini.duckdns.org",
+            "user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+            "content-length": "467",
+            "accept": "application/json,*/*",
+            "accept-encoding": "gzip,deflate",
+            "content-type": "application/x-www-form-urlencoded",
+            "via": "1.1 Caddy",
+            "x-forwarded-for": "44.215.102.135",
+            "x-forwarded-host": "heztner-abaldosoldini.duckdns.org",
+            "x-forwarded-proto": "https",
+            "x-slack-request-timestamp": "1792685155",
+            "x-slack-signature": "v0=421b7d0b517d2d9a57953dbf51c7ac56f950e09acc8193ba1dcbedf27bf03814"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "token": "aAhdp1HbkEJQLwWJyQ3pv1G4",
+            "team_id": "T0C99KKE2H2",
+            "team_domain": "abaldosoldini",
+            "channel_id": "C0CAEACK12S",
+            "channel_name": "logistica",
+            "user_id": "U0C90L0SMFX",
+            "user_name": "abaldosoldini",
+            "command": "/consulta_ia",
+            "text": "que documentos tienes disponible?",
+            "api_app_id": "A0C95QHDA3C",
+            "is_enterprise_install": "false",
+            "response_url": "https://hooks.slack.com/commands/T0C99KKE2H2/12388624282225/diKQVw64E9iEJFvXlZRjPDjp",
+            "trigger_id": "12415099491920.12315665478580.2c9a727a79b08042f2441a3b25002c2f"
+          },
+          "webhookUrl": "https://heztner-abaldosoldini.duckdns.org/webhook/176f15e9-de2e-48de-a539-7381e4f4d74c",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook /consulta_ia": {
+      "main": [
+        [
+          {
+            "node": "Registrar solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar solicitud": {
+      "main": [
+        [
+          {
+            "node": "Notificar solicitud recibida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar solicitud recibida": {
+      "main": [
+        [
+          {
+            "node": "Enrutar por comando",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrutar por comando": {
+      "main": [
+        [
+          {
+            "node": "Preparar datos para IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar datos para actualizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar datos para IA": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar subflujo consulta_ia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar subflujo consulta_ia": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook /actualizar_conocimiento": {
+      "main": [
+        [
+          {
+            "node": "Registrar solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar datos para actualizar": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar subflujo archivos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f8b40619-5018-4da3-836e-aa0e9d028c18",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a02db2a2f3a5e728c3c72dc3e6158e75d02f1147091a88d152f46abb41015ac7"
+  },
+  "nodeGroups": [],
+  "id": "goN9MpTwTQF2brct",
+  "tags": []
+}

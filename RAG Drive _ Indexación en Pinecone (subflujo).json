@@ -1,0 +1,780 @@
+{
+  "name": "RAG Drive | Indexación en Pinecone (subflujo)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -208,
+        -400
+      ],
+      "id": "e7151a6a-34b6-4f33-8591-618549bc6e9e",
+      "name": "Recibe archivo"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "ragdrive_archivos",
+        "limit": 1,
+        "orderBy": "created_at.asc",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "archivo_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.archivo_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -400
+      ],
+      "id": "32695a85-a9fd-46f0-ba3a-c46ee03b6727",
+      "name": "Buscar registro original",
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0ec7a8b9-95dd-4f12-8e55-7e904834f94f",
+              "leftValue": "={{ $json.pinecone_estado }}",
+              "rightValue": "indexado",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        240,
+        -400
+      ],
+      "id": "414198df-6c06-4b19-8233-bf29cb03f3e1",
+      "name": "¿Ya indexado?"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "ragdrive_archivos",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "proceso_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Recibe archivo').item.json.proceso_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        464,
+        -496
+      ],
+      "id": "bcedcb2f-79ce-4e66-be73-8e236c037bb7",
+      "name": "Eliminar registro duplicado",
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.extension }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "06497680-6c7d-456b-b1a4-1784da3820db"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "af78caa5-9fe0-404e-8006-689a5d989d97",
+                    "leftValue": "={{ $json.format_extension }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        -304
+      ],
+      "id": "e6b8f0b2-3840-40a9-bce6-f47bb562afa7",
+      "name": "Filtrar por formato"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.archivo_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        688,
+        -400
+      ],
+      "id": "aa707d2a-3879-411b-a2cf-7a4a03f5c02d",
+      "name": "Descargar PDF de Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "XXnzm2BnfbsdFHXX",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        -400
+      ],
+      "id": "c07dc32c-0fdd-4456-bd30-e3b926ae831a",
+      "name": "Extraer texto del PDF"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "drive-documentos",
+          "mode": "list",
+          "cachedResultName": "drive-documentos"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1168,
+        -400
+      ],
+      "id": "0c2f487e-181b-4491-a960-e0ad77be47b4",
+      "name": "Indexar en Pinecone",
+      "credentials": {
+        "pineconeApi": {
+          "id": "j6bBGmeWPHop8ZxZ",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "=slack_channel_id",
+                "value": "={{ $('Buscar registro original').item.json.slack_channel_id }}"
+              },
+              {
+                "name": "archivo_id",
+                "value": "={{ $('Buscar registro original').item.json.archivo_id }}"
+              },
+              {
+                "name": "=raiz",
+                "value": "={{ $('Buscar registro original').item.json.carpeta_raiz }}"
+              },
+              {
+                "name": "subcarpeta",
+                "value": "={{ $('Buscar registro original').item.json.subcarpeta }}"
+              },
+              {
+                "name": "nombre_archivo",
+                "value": "={{ $('Extraer texto del PDF').item.json.info.Title }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "21d98bb6-af38-4178-888a-5f3906943900",
+      "name": "Documento + metadata",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "position": [
+        1280,
+        -176
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1152,
+        -176
+      ],
+      "id": "f1717b4a-cb57-482c-b4bd-9b29c40483d5",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "yrD0huak4GjFcXa0",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        48
+      ],
+      "id": "da82fc6b-1945-4904-ac56-9fee20e197de",
+      "name": "Dividir en chunks"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst unicos = new Map();\n\nfor (const item of $input.all()) {\n  const fileId = item.json.metadata.archivo_id;\n\n  if (!unicos.has(fileId)) {\n    unicos.set(fileId, item);\n  }\n}\n\nreturn Array.from(unicos.values());\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        -400
+      ],
+      "id": "b3b38e3e-3aa8-478b-9480-4891b901306e",
+      "name": "Un item por archivo"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "ragdrive_archivos",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "proceso_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Buscar registro original').item.json.proceso_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "pinecone_estado",
+              "fieldValue": "indexado"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        -400
+      ],
+      "id": "b9a8773f-632b-4daf-907c-47c2a0295c49",
+      "name": "Marcar como indexado",
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Buscar registro original').item.json.slack_channel_id }}",
+          "mode": "id"
+        },
+        "messageType": "block",
+        "blocksUi": "={\n  \"text\": \"✅ Documento indexado correctamente: {{ $json.nombre_archivo }}\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"✅ *Documento indexado correctamente*\\n\\n*{{ $json.nombre_archivo }}*\\n📁 {{ $json.carpeta_raiz }} / {{ $json.subcarpeta }}\"\n      }\n    },\n    {\n      \"type\": \"context\",\n      \"elements\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"{{ 'El documento ya está disponible para consultas en este canal.' + ($json.solicitud_id ? '\\\\n• Solicitud: `' + $json.solicitud_id + '`' : '') }}\"\n        }\n      ]\n    }\n  ]\n}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        2080,
+        -400
+      ],
+      "id": "b1ce3553-1301-4544-aca5-a5a5e363441e",
+      "name": "Notificar en Slack",
+      "webhookId": "e5239eb1-68f3-404b-a2d8-0db14fdb44ee",
+      "credentials": {
+        "slackApi": {
+          "id": "TKPcqdX6ayXZZuIC",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "ragdrive_archivos",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "proceso_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Buscar registro original').item.json.proceso_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "error_message",
+              "fieldValue": "formato_no_soportado"
+            },
+            {
+              "fieldId": "pinecone_estado",
+              "fieldValue": "no_indexado"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -208
+      ],
+      "id": "db149574-3f87-4c63-809e-3b756836685f",
+      "name": "Formato no soportado",
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "VloEoWXcTWJ5JZYG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**📥 Recepción y validación del archivo**\n\nRecibe el registro del archivo desde el flujo principal y recupera su información original en Supabase.\n\n- Si ya está indexado, elimina el registro de proceso duplicado.\n- Si todavía no está indexado, continúa con la validación del formato.\n\nEl objetivo es evitar volver a procesar archivos que ya fueron indexados.",
+        "height": 512,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -752
+      ],
+      "id": "a79f6734-920d-4197-b60c-e08e914e17ca",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**📄 Descarga y extracción del contenido**\n\nSe verifica el formato del archivo antes de procesarlo.\n\n- **PDF:** se descarga desde Google Drive y se extrae su contenido textual.\n- **Otros formatos:** se registran como no soportados y no continúan hacia Pinecone.\n\nActualmente, el procesamiento de documentos está limitado a archivos PDF.",
+        "height": 704,
+        "width": 448,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -752
+      ],
+      "id": "65f642f2-3758-4215-ba3e-46a81bb52877",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 208,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -544
+      ],
+      "id": "c8df5515-1886-4a6b-b753-f2c3817d6613",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "**🧠 Preparación e indexación en Pinecone**\n\nEl contenido del documento se prepara para incorporarlo a la base de conocimiento vectorial.\n\n1. Se divide el texto en fragmentos (*chunks*).\n2. Se generan embeddings mediante OpenAI.\n3. Se incorpora el contenido a Pinecone con sus metadatos de identificación y ubicación.\n\nLos metadatos permiten asociar cada fragmento con su archivo, canal de Slack, carpeta raíz y subcarpeta.",
+        "height": 928,
+        "width": 672,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -752
+      ],
+      "id": "64237ed7-eaf3-49c3-b2a6-a3e8f158fabd",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "**✅ Actualización del estado**\n\nUna vez completada la indexación, se consolida la salida para trabajar con un elemento por archivo y se actualiza su registro en Supabase.\n\nEl campo `pinecone_estado` pasa a `indexado`, dejando constancia de que el documento terminó el procesamiento correctamente.",
+        "height": 512,
+        "width": 448,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        -752
+      ],
+      "id": "be38f665-365a-4a78-a85e-2505b94b4332",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "**💬 Notificación del resultado**\n\nSe informa en el canal de Slack asociado al documento cuando la indexación finaliza correctamente.\n\nLa notificación incluye el nombre del archivo, su ubicación, el formato y el identificador del proceso, indicando que ya puede consultarse mediante el asistente de IA del canal.\n\nLos formatos no soportados se registran en Supabase con su estado y motivo correspondientes.",
+        "height": 512,
+        "width": 480,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        -752
+      ],
+      "id": "648a8b20-eb54-4e68-99e3-638ebc88b7ce",
+      "name": "Sticky Note5"
+    }
+  ],
+  "pinData": {
+    "Recibe archivo": [
+      {
+        "json": {
+          "id": 170,
+          "created_at": "2026-10-22T15:57:35.726642+00:00",
+          "archivo_id": "1LYC1lICL-apGVQQGtEbgFzbuCpD-W_LX",
+          "nombre_archivo": "Plan Estratégico de Marketing 2026-2027 - Empresa X.pdf",
+          "extension": "pdf",
+          "pinecone_estado": "pendiente",
+          "error_message": null,
+          "proceso_id": "DRIVE-170",
+          "slack_channel_id": "C0CAEACK12S",
+          "email_address": "abaldosoldini@gmail.com",
+          "carpeta_raiz": "Logistica",
+          "subcarpeta": "Cliente A",
+          "subcarpeta_id": "1mZ9bfjWtt1fUQ4QzCKUlrNC4xO43LjnS",
+          "carpeta_raiz_id": "1ZlTw0_CN0QbHdEzXHl83GTpRzV4UmH4S",
+          "solicitud_id": "SLACK-23"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "id": 171,
+          "created_at": "2026-10-22T15:57:35.726642+00:00",
+          "archivo_id": "1PJ2YBK39ueIhPUIqnqlR9SNCdha4gdBz",
+          "nombre_archivo": "Stock oficina.pdf",
+          "extension": "pdf",
+          "pinecone_estado": "pendiente",
+          "error_message": null,
+          "proceso_id": "DRIVE-171",
+          "slack_channel_id": "C0CAEACK12S",
+          "email_address": "abaldosoldini@gmail.com",
+          "carpeta_raiz": "Logistica",
+          "subcarpeta": "Cliente A",
+          "subcarpeta_id": "1mZ9bfjWtt1fUQ4QzCKUlrNC4xO43LjnS",
+          "carpeta_raiz_id": "1ZlTw0_CN0QbHdEzXHl83GTpRzV4UmH4S",
+          "solicitud_id": "SLACK-23"
+        },
+        "pairedItem": {
+          "item": 1
+        }
+      },
+      {
+        "json": {
+          "id": 172,
+          "created_at": "2026-10-22T15:57:35.726642+00:00",
+          "archivo_id": "1tHrBICkR_C7CgQW32BDx9xUQB1w25hv4",
+          "nombre_archivo": "COMPROBANTES PENDIENTES MADX.pdf",
+          "extension": "pdf",
+          "pinecone_estado": "pendiente",
+          "error_message": null,
+          "proceso_id": "DRIVE-172",
+          "slack_channel_id": "C0CAEACK12S",
+          "email_address": "abaldosoldini@gmail.com",
+          "carpeta_raiz": "Logistica",
+          "subcarpeta": "Cliente A",
+          "subcarpeta_id": "1mZ9bfjWtt1fUQ4QzCKUlrNC4xO43LjnS",
+          "carpeta_raiz_id": "1ZlTw0_CN0QbHdEzXHl83GTpRzV4UmH4S",
+          "solicitud_id": "SLACK-23"
+        },
+        "pairedItem": {
+          "item": 2
+        }
+      },
+      {
+        "json": {
+          "id": 173,
+          "created_at": "2026-10-22T15:57:35.726642+00:00",
+          "archivo_id": "1zGSjhnc8RBiPgmmJgq0BQiOIyRcFDQop",
+          "nombre_archivo": "Asientos desde Comprobntes 09 26.pdf",
+          "extension": "pdf",
+          "pinecone_estado": "pendiente",
+          "error_message": null,
+          "proceso_id": "DRIVE-173",
+          "slack_channel_id": "C0CAEACK12S",
+          "email_address": "abaldosoldini@gmail.com",
+          "carpeta_raiz": "Logistica",
+          "subcarpeta": "Cliente A",
+          "subcarpeta_id": "1mZ9bfjWtt1fUQ4QzCKUlrNC4xO43LjnS",
+          "carpeta_raiz_id": "1ZlTw0_CN0QbHdEzXHl83GTpRzV4UmH4S",
+          "solicitud_id": "SLACK-23"
+        },
+        "pairedItem": {
+          "item": 3
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Recibe archivo": {
+      "main": [
+        [
+          {
+            "node": "Buscar registro original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar registro original": {
+      "main": [
+        [
+          {
+            "node": "¿Ya indexado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ya indexado?": {
+      "main": [
+        [
+          {
+            "node": "Eliminar registro duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filtrar por formato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar por formato": {
+      "main": [
+        [
+          {
+            "node": "Descargar PDF de Drive",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formato no soportado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar PDF de Drive": {
+      "main": [
+        [
+          {
+            "node": "Extraer texto del PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer texto del PDF": {
+      "main": [
+        [
+          {
+            "node": "Indexar en Pinecone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Indexar en Pinecone": {
+      "main": [
+        [
+          {
+            "node": "Un item por archivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Documento + metadata": {
+      "ai_document": [
+        [
+          {
+            "node": "Indexar en Pinecone",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Indexar en Pinecone",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dividir en chunks": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Documento + metadata",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Un item por archivo": {
+      "main": [
+        [
+          {
+            "node": "Marcar como indexado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar como indexado": {
+      "main": [
+        [
+          {
+            "node": "Notificar en Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "773d2d1c-bb46-468f-8309-85b84ad8e01e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a02db2a2f3a5e728c3c72dc3e6158e75d02f1147091a88d152f46abb41015ac7"
+  },
+  "nodeGroups": [],
+  "id": "Z2AdG6XTIPCw9iJu",
+  "tags": []
+}
